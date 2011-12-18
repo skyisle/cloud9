@@ -34,26 +34,29 @@ exports.main = function(options) {
     var ideProvider = function(server, sessionStore) {
         
         return function(req, res, next) {
+            var ide;
             if (!req.session.uid) {
                 req.session.uid = "owner_" + req.sessionID;
                 var id = req.params.id;
                 var ws = req.params.project;
 
                 var name = ws;//projectBaseDir.split("/").pop();
+                var prefix = "/" + id + "/" + ws;
                 var serverOptions = {
-                    workspaceDir: projectBaseDir + "/" + id + "/" + ws,
-                    baseUrl: "/" + id + "/" + ws,
+                    workspaceDir: projectBaseDir + prefix,
+                    davPrefix: prefix + "/workspace",
+                    baseUrl: prefix,
                     debug: options.debug,
                     staticUrl: "/static",
-                    workspaceId: name,
+                    workspaceId: "user" + prefix,
                     name: name,
                     version: options.version
                 };
-                var ide = new IdeServer(serverOptions, server, exts);
+                ide = new IdeServer(serverOptions, server, exts);
                 req.session.ide = ide;
             }
 
-            var ide = req.session.ide;
+            ide = req.session.ide;
             ide.addUser(req.session.uid, User.OWNER_PERMISSIONS);
             ide.handle(req, res, next);
         };
@@ -96,6 +99,7 @@ exports.main = function(options) {
     }));
     
     //server.use(ideProvider(projectDir, server, sessionStore));
+    //server.use(Connect.logger());
     server.all('/:id/:project', ideProvider(server, sessionStore), function(req, res, next) {
         next();
     });
